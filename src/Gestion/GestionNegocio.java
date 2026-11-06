@@ -4,22 +4,16 @@ import java.util.ArrayList;
 import modelo.*;
 
 public class GestionNegocio {
-    private ArrayList<Cliente> clientes;
-    private ArrayList<Bicicletas> inventario; 
-    private ArrayList<Alquiler> alquileresActivos;
-    private double totalRecaudado;
 
-    public GestionNegocio() {
-        clientes = new ArrayList<>();
-        inventario = new ArrayList<>();
-        alquileresActivos = new ArrayList<>();
-        totalRecaudado = 0.0;
-    }
+    private ArrayList<Cliente> clientes = new ArrayList<>();
+    private ArrayList<Bicicletas> inventario = new ArrayList<>();
+    private ArrayList<Alquiler> alquileresActivos = new ArrayList<>();
+    private double totalRecaudado = 0;
 
     public boolean registrarCliente(String documento, String nombre, String telefono) {
         for (Cliente c : clientes) {
             if (c.getDocumento().equals(documento)) {
-                return false; 
+                return false;
             }
         }
         clientes.add(new Cliente(documento, nombre, telefono));
@@ -29,7 +23,7 @@ public class GestionNegocio {
     public boolean registrarBicicleta(Bicicletas bici) {
         for (Bicicletas b : inventario) {
             if (b.getCodigo().equals(bici.getCodigo())) {
-                return false; 
+                return false;
             }
         }
         inventario.add(bici);
@@ -37,15 +31,10 @@ public class GestionNegocio {
     }
 
     public void listarBicicletasDisponibles() {
-        boolean hay = false;
         for (Bicicletas b : inventario) {
             if (b.getEstado().equals("Disponible")) {
-                System.out.println(b.toString());
-                hay = true;
+                System.out.println(b);
             }
-        }
-        if (!hay) {
-            System.out.println("No hay bicicletas disponibles en este momento.");
         }
     }
 
@@ -72,58 +61,55 @@ public class GestionNegocio {
         Bicicletas b = buscarBicicletaDisponible(codigoBici);
 
         if (c != null && b != null && horas >= 1 && horas <= 8) {
-            Alquiler nuevoAlquiler = new Alquiler(c, b, horas);
-            b.setEstado("Ocupada"); 
-            alquileresActivos.add(nuevoAlquiler);
+            alquileresActivos.add(new Alquiler(c, b, horas));
+            b.setEstado("Ocupada");
             return true;
         }
         return false;
     }
 
     public void procesarDevolucion(String codigoBici, int horasReales) {
-        Alquiler alquilerTerminado = null;
-        
+        Alquiler alquiler = null;
+
         for (Alquiler a : alquileresActivos) {
             if (a.getBicicleta().getCodigo().equals(codigoBici)) {
-                alquilerTerminado = a;
+                alquiler = a;
                 break;
             }
         }
 
-        if (alquilerTerminado != null) {
-            Bicicletas b = alquilerTerminado.getBicicleta();
-            double costoBase = 0.0;
-            int horasPactadas = alquilerTerminado.getHorasPactadas();
-
-            if (horasPactadas >= 3) {
-                costoBase = b.calcularCosto(horasPactadas, 0.10);
-            } else {
-                costoBase = b.calcularCosto(horasPactadas);
-            }
-
-            double recargo = 0.0;
-            if (horasReales > horasPactadas) {
-                int horasExcedentes = horasReales - horasPactadas;
-                recargo = horasExcedentes * (b.getTarifaBase() * 1.5);
-            }
-
-            double totalPagar = costoBase + recargo;
-            totalRecaudado += totalPagar;
-            b.setEstado("Disponible");
-            alquileresActivos.remove(alquilerTerminado);
-
-            System.out.println("--- FACTURA DE DEVOLUCION ---");
-            System.out.println("Cliente: " + alquilerTerminado.getCliente().getNombre());
-            System.out.println("Bicicleta: " + b.getCodigo());
-            System.out.println("Costo base (con/sin descuento): $" + costoBase);
-            if (recargo > 0) {
-                System.out.println("Recargo por " + (horasReales - horasPactadas) + " horas de retraso: $" + recargo);
-            }
-            System.out.println("TOTAL A PAGAR: $" + totalPagar);
-            System.out.println("-----------------------------");
-        } else {
-            System.out.println("Error: No se encontro un alquiler activo con esa bicicleta.");
+        if (alquiler == null) {
+            System.out.println("No existe un alquiler activo con esa bicicleta.");
+            return;
         }
+
+        Bicicletas b = alquiler.getBicicleta();
+        int horas = alquiler.getHorasPactadas();
+
+        double costo;
+        if (horas >= 3) {
+            costo = b.calcularCosto(horas, 0.10);
+        } else {
+            costo = b.calcularCosto(horas);
+        }
+
+        double recargo = 0;
+        if (horasReales > horas) {
+            recargo = (horasReales - horas) * (b.getTarifaBase() * 1.5);
+        }
+
+        double total = costo + recargo;
+        totalRecaudado += total;
+
+        b.setEstado("Disponible");
+        alquileresActivos.remove(alquiler);
+
+        System.out.println("--- FACTURA ---");
+        System.out.println("Cliente: " + alquiler.getCliente().getNombre());
+        System.out.println("Bicicleta: " + b.getCodigo());
+        System.out.println("Costo base: $" + costo);
+        System.out.println("Recargo: $" + recargo);
+        System.out.println("TOTAL: $" + total);
     }
 
     public void mostrarGanancias() {
